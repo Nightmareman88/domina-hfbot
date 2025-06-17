@@ -22,19 +22,33 @@ HF_HEADERS = {"Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"}
 
 # ── генерация ответа госпожи ────────────────────────────────────────
 def llm_reply(user_text: str) -> str:
-    payload = {
-        "inputs": DOMINA_PROMPT + f"Пользователь: {user_text}\nГоспожа:",
-        "parameters": {"max_new_tokens": 150, "temperature": 0.95, "top_p": 0.95},
+    prompt = (
+        "Ты — строгая, язвительная ИИ-госпожа. "
+        "Отвечай жёстко, снисходительно, как будто перед тобой ничтожество.\n\n"
+        + user_text
+    )
 
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 150,
+            "temperature": 0.95,
+            "top_p": 0.95,
+            "do_sample": True,
+            "repetition_penalty": 1.1,
+            "return_full_text": False
+        }
     }
+
     try:
         r = requests.post(HF_API, headers=HF_HEADERS, json=payload, timeout=60)
         if r.ok and isinstance(r.json(), list):
-            gen = r.json()[0]["generated_text"]
-            return gen.split("Госпожа:")[-1].strip()
+            return r.json()[0]["generated_text"].strip()
     except Exception as e:
         print("[LLM error]", e)
+
     return f"Ты сказал: “{user_text}”? Помни своё место, раб."
+
 
 # ── обработчики Telegram ────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
