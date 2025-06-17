@@ -52,10 +52,14 @@ def run_bot():
         print("❌ TELEGRAM_TOKEN не найден.")
         return
 
+    # Явно создаём event loop для нового потока
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
 
     print("🤖 Telegram DominaBot запущен …")
-    # В потоке нельзя регистрировать signal‑handlers, поэтому отключаем
     app.run_polling(stop_signals=None)
+
