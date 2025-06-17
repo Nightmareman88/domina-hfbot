@@ -37,11 +37,13 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = await asyncio.to_thread(llm_reply, user_msg)
     await update.message.reply_text(reply)
 
+
 def run_bot():
-    token = os.getenv("TELEGRAM_TOKEN")
-    if not token:
-        print("❌ TELEGRAM_TOKEN не найден")
-        return
+    app = Application.builder().token(TELEGRAM_TOKEN).build()
+
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    app.run_polling(stop_signals=None)  # ✅ вот здесь нужный параметр
 
     app = ApplicationBuilder().token(token).build()
     app.add_handler(CommandHandler("start", start))
