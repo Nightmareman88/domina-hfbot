@@ -2,7 +2,7 @@
 title: domina-hfbot
 emoji: 😈
 colorFrom: purple
-colorTo: black
+colorTo: pink
 sdk: static
 sdk_version: "1.0.0"
 app_file: index.html
