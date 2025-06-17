@@ -47,4 +47,5 @@ def run_bot():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     print("🤖 Telegram DominaBot запущен…")
-    app.run_polling()
+    app.run_polling(stop_signals=None)
+
