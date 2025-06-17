@@ -1,20 +1,21 @@
+
 import threading
-from telegram_bot import run_bot
 import gradio as gr
+from telegram_bot import run_bot
 
-# ── запускаем Telegram‑бот в фоновом потоке ─────────────────────────
-def launch_bot():
-    run_bot()          # ⬅︎ важно: без сигнал‑хендлеров
+threading.Thread(target=run_bot, daemon=True).start()
 
-threading.Thread(target=launch_bot, daemon=True).start()
+def ping(text):
+    return f"Госпожа слышит: {text}"
 
-# ── минимальный Gradio UI (health‑check) ────────────────────────────
-def ping(txt):     # отвечает госпожой, чтобы было видно в UI
-    return f"Ты осмелился сказать: “{txt}”? Помни своё место."
-
-demo = gr.Interface(fn=ping, inputs="text", outputs="text",
-                    title="DominaBot — живой",
-                    theme=gr.themes.Monochrome())
+demo = gr.Interface(
+    fn=ping,
+    inputs="text",
+    outputs="text",
+    title="DominaBot • health‑check",
+    description="Бот‑госпожа слушает тебя… будь осторожен.",
+    theme=gr.themes.Monochrome(),
+)
 
 if __name__ == "__main__":
-    demo.launch()          # Gradio поднимет порт 7860
+    demo.launch()
