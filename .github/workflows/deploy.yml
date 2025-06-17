@@ -1,0 +1,21 @@
+name: Sync to Hugging Face
+
+on:
+  push:
+    branches: [main]
+
+jobs::
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run:  |
+          git config --global user.email "bot@example.com"
+          git config --global user.name "Deploy Bot"
+          git remote add space https://huggingface.co/spaces/ChekinaPS/domina-hfbot
+          git push --force https://ChekinaPS:$HF_TOKEN@huggingface.co/spaces/ChekinaPS/domina-hfbot main
