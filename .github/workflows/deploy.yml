@@ -1,21 +1,33 @@
-name: Sync to Hugging Face
+name: Deploy to Hugging Face Space
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main          # запускать каждый push в ветку main
 
-jobs::
+jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
 
-      - name: Push to Hugging Face Space
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync code to Hugging Face Space
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run:  |
-          git config --global user.email "bot@example.com"
-          git config --global user.name "Deploy Bot"
-          git remote add space https://huggingface.co/spaces/ChekinaPS/domina-hfbot
-          git push --force https://ChekinaPS:$HF_TOKEN@huggingface.co/spaces/ChekinaPS/domina-hfbot main
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}   # токен‑«write» из Secrets
+        run: |
+          # глобальные данные для коммитов в Space
+          git config --global user.email "actions@github.com"
+          git config --global user.name  "GitHub Actions"
+
+          # клонируем твой Space
+          git clone https://huggingface.co/spaces/ChekinaPS/domina-hfbot hfspace
+
+          # копируем весь проект, кроме .git, в Space‑репо
+          rsync -av --exclude='.git' ./ hfspace/
+
+          cd hfspace
+          git add .
+          git commit -m "Auto‑sync from GitHub" || true   # не падаем, если нет изменений
+          git push https://ChekinaPS:$HF_TOKEN@huggingface.co/spaces/ChekinaPS/domina-hfbot HEAD
