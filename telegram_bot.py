@@ -24,7 +24,8 @@ HF_HEADERS = {"Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"}
 def llm_reply(user_text: str) -> str:
     payload = {
         "inputs": DOMINA_PROMPT + f"Пользователь: {user_text}\nГоспожа:",
-        "parameters": {"max_new_tokens": 60, "temperature": 0.9},
+        "parameters": {"max_new_tokens": 150, "temperature": 0.95, "top_p": 0.95},
+
     }
     try:
         r = requests.post(HF_API, headers=HF_HEADERS, json=payload, timeout=60)
