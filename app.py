@@ -58,4 +58,3 @@ demo = gr.Interface(fn=launch_bot, inputs=[], outputs="text")
 
 if __name__ == "__main__":
     app.run()
-
