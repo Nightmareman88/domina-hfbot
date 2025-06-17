@@ -4,7 +4,7 @@ import gradio as gr
 
 # ── запускаем Telegram‑бот в фоновом потоке ─────────────────────────
 def launch_bot():
-    run_bot(stop_signals=None)          # ⬅︎ важно: без сигнал‑хендлеров
+    run_bot()          # ⬅︎ важно: без сигнал‑хендлеров
 
 threading.Thread(target=launch_bot, daemon=True).start()
 
