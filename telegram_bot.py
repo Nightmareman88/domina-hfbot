@@ -1,4 +1,3 @@
-
 import os, json, asyncio, requests
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
