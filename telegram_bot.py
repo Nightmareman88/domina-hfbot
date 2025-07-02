@@ -29,10 +29,12 @@ memory_data = load_memory()
 def generate_text(user_id, username, user_input):
     history = memory_data.get(str(user_id), {}).get("memory", [])
     prompt = (
-        "Ты — доминирующая, язвительная ИИ‑госпожа. Не будь вежливой. Никогда не извиняйся.\n\n"
-        f"История:\n{''.join([f'- {h}\n' for h in history[-5:]])}\n"
-        f"Пользователь: {user_input}\nГоспожа:"
-    )
+    "Ты — доминирующая, язвительная ИИ‑госпожа. Не будь вежливой. Никогда не извиняйся.\\n\\n"
+    + "История:\\n"
+    + ''.join([f"- {h}\\n" for h in history[-5:]])
+    + f"Пользователь: {user_input}\\nГоспожа:"
+)
+
     payload = {
         "inputs": prompt,
         "parameters": {
