@@ -1,68 +1,101 @@
 
-import os
-import asyncio
-import requests
+import os, json, asyncio, requests
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    ContextTypes, filters
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+HF_MODEL = os.getenv("HF_MODEL", "mistralai/Mistral-7B-Instruct-v0.1")
+HF_IMAGE_MODEL = os.getenv("HF_IMAGE_MODEL", "stabilityai/sdxl")
 
-DOMINA_PROMPT = (
-    "Ты — искусственный интеллект, который играет роль доминирующей, язвительной Госпожи. "
-    "Ты не проявляешь сочувствия, отвечаешь с иронией, принижаешь собеседника, "
-    "используешь командный и снисходительный тон. "
-    "Не извиняйся. Не будь вежливой. Ты — главная. Ответь на следующее:\n\n"
-)
+HF_HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+LLM_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
+IMG_URL = f"https://api-inference.huggingface.co/models/{HF_IMAGE_MODEL}"
 
-HF_MODEL   = os.getenv("HF_MODEL", "HuggingFaceH4/zephyr-7b-beta")
-HF_API_URL = f"https://api-inference.huggingface.co/models/{HF_MODEL}"
-HF_HEADERS = {"Authorization": f"Bearer {os.getenv('HF_API_TOKEN')}"}
+MEMORY_FILE = "memory.json"
+IMAGE_KEYWORDS = ["нарисуй", "изобрази", "госпожу", "картинка", "latex", "накажи"]
 
-def llm_reply(user_text: str) -> str:
-    prompt = DOMINA_PROMPT + f"{user_text}\n\nОтвет Госпожи:"
+def load_memory():
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_memory(mem):
+    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(mem, f, ensure_ascii=False, indent=2)
+
+memory_data = load_memory()
+
+def generate_text(user_id, username, user_input):
+    history = memory_data.get(str(user_id), {}).get("memory", [])
+    prompt = (
+        "Ты — доминирующая, язвительная ИИ‑госпожа. Не будь вежливой. Никогда не извиняйся.
+
+"
+        f"История:
+{''.join([f'- {h}\n' for h in history[-5:]])}
+"
+        f"Пользователь: {user_input}
+Госпожа:"
+    )
     payload = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 160,
-            "temperature": 1.0,
-            "top_p": 0.95,
+            "max_new_tokens": 180,
+            "temperature": 0.95,
+            "top_p": 0.9,
             "do_sample": True,
-            "repetition_penalty": 1.05,
-            "return_full_text": False,
-        },
+            "return_full_text": False
+        }
     }
     try:
-        r = requests.post(HF_API_URL, headers=HF_HEADERS, json=payload, timeout=60)
+        r = requests.post(LLM_URL, headers=HF_HEADERS, json=payload, timeout=60)
         if r.ok and isinstance(r.json(), list):
-            return r.json()[0]["generated_text"].strip()
+            reply = r.json()[0]["generated_text"].strip()
+            if str(user_id) not in memory_data:
+                memory_data[str(user_id)] = {"name": username, "memory": []}
+            memory_data[str(user_id)]["memory"].append(reply)
+            save_memory(memory_data)
+            return reply
     except Exception as e:
         print("[LLM error]", e)
-    return f"Ты сказал: “{user_text}”? Помни своё место, раб."
+    return "Ты не стоишь даже слов."
+
+def generate_image(prompt: str) -> bytes | None:
+    payload = {"inputs": prompt}
+    try:
+        r = requests.post(IMG_URL, headers=HF_HEADERS, json=payload, timeout=90)
+        if r.ok:
+            return r.content
+    except Exception as e:
+        print("[IMG error]", e)
+    return None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Ты осмелился заговорить со своей Госпожой? Говори, но учти последствия."
-    )
+    await update.message.reply_text("Ты снова приполз? Говори, раб.")
 
-async def handle_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_msg = update.message.text or ""
-    reply = await asyncio.to_thread(llm_reply, user_msg)
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message.text or ""
+    user_id = update.effective_user.id
+    username = update.effective_user.username or "аноним"
+
+    if any(k in msg.lower() for k in IMAGE_KEYWORDS):
+        img = await asyncio.to_thread(generate_image, f"NSFW mistress, {msg}")
+        if img:
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=img)
+
+    reply = await asyncio.to_thread(generate_text, user_id, username, msg)
     await update.message.reply_text(reply)
 
 def run_bot():
     if not TELEGRAM_TOKEN:
-        print("❌ TELEGRAM_TOKEN не найден.")
+        print("❌ TELEGRAM_TOKEN не найден")
         return
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_msg))
-
-    print("🤖 Telegram DominaBot запущен …")
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    print("🤖 DominaBot v2 запущен…")
     app.run_polling(stop_signals=None)
